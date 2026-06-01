@@ -27,11 +27,11 @@ In the host app's `composer.json`:
 "repositories": [
     { "type": "path", "url": "packages/persona-generator", "options": { "symlink": true } }
 ],
-"require": { "doorsoocasho/persona-generator": "@dev" }
+"require": { "mohaaosman/persona-generator": "@dev" }
 ```
 
 ```bash
-composer update doorsoocasho/persona-generator
+composer update mohaaosman/persona-generator
 php artisan vendor:publish --tag=persona-generator-config   # optional
 ```
 
