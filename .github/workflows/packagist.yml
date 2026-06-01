@@ -1,0 +1,30 @@
+name: update-packagist
+
+# Continuous delivery: ping Packagist to pull the latest tags/metadata
+# whenever a new GitHub release is published (or run manually).
+#
+# Requires two repository secrets (Settings → Secrets and variables → Actions):
+#   PACKAGIST_USERNAME — your packagist.org username
+#   PACKAGIST_TOKEN    — API token from https://packagist.org/profile/
+#
+# Alternative: enable Packagist's GitHub integration / webhook on packagist.org,
+# which auto-syncs without this workflow. Keep one or the other, not both.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  notify-packagist:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Packagist
+        run: |
+          curl --fail-with-body -sS -XPOST \
+            -H 'content-type:application/json' \
+            "https://packagist.org/api/update-package?username=${PACKAGIST_USERNAME}&apiToken=${PACKAGIST_TOKEN}" \
+            -d '{"repository":{"url":"https://github.com/${{ github.repository }}"}}'
+        env:
+          PACKAGIST_USERNAME: ${{ secrets.PACKAGIST_USERNAME }}
+          PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
