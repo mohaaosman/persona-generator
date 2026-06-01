@@ -11,7 +11,7 @@ effectively unbounded pool of unique people.
 
 ## Requirements
 
-- PHP `^8.2` (uses `\Random\Randomizer`; no PHP 8.3/8.4-only syntax)
+- PHP `^8.3` (uses `\Random\Randomizer`; the optional `laravel/ai` prose driver requires 8.3+)
 - Laravel **11, 12, or 13** (`illuminate/support: ^11 || ^12 || ^13`)
 - `nesbot/carbon: ^2.72 || ^3.0`
 
