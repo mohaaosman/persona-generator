@@ -59,9 +59,15 @@ PersonaFactory::new()->seed(1)->makeMany(8); // array<Persona>
 
 - **Coherent** — one birth year drives age, education years, and a first job that
   starts no earlier than graduation; employment is ordered and non-overlapping.
+- **Field-aligned careers** — each field of study maps to a career *family*
+  (engineering, health, finance, ICT, law, education, …), so a persona's job
+  ladder matches what they studied. Most positions are public-sector, with some
+  NGO and private employers mixed in for realism. ~30% of personas show one short
+  career gap.
 - **Seedable** — a given seed reproduces the same structured output via an
   isolated `\Random\Randomizer` (never touches global `mt_srand()`). AI prose is
-  the exception and is non-deterministic.
+  the exception and is non-deterministic. Note: seed output is stable *within* a
+  minor version; v0.1.0 intentionally changed what a given seed produces.
 - **Offline by default** — bio/cover letter use sentence templates; enable
   `laravel/ai` prose with `config('persona-generator.ai.enabled')` (falls back to
   templates on any failure).

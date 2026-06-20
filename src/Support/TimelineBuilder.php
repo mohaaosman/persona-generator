@@ -22,6 +22,15 @@ class TimelineBuilder
 
     private const BACHELOR_YEARS = 4;
 
+    /** Career family used when a field declares none / an unknown one. */
+    private const DEFAULT_FAMILY = 'public_admin';
+
+    /** Relative selection weights per employer sector (public-sector-first). */
+    private const SECTOR_WEIGHTS = ['government' => 60, 'ngo' => 30, 'private' => 15];
+
+    /** Probability a persona has one short gap between two positions. */
+    private const GAP_PROBABILITY = 0.30;
+
     public function __construct(
         private readonly LocaleRepository $locale,
         private readonly SeededRandom $random,
@@ -40,11 +49,11 @@ class TimelineBuilder
         [$region, $city] = $this->pickHome();
 
         $field = $this->random->pick($this->locale->fields());
+        $family = $field['family'] ?? self::DEFAULT_FAMILY;
         $education = $this->buildEducation($birthYear, $currentYear, $field);
-        $highestLevel = $education->last()?->degree ?? '';
         $bachelorEndYear = $education->first()->endYear;
 
-        $employment = $this->buildEmployment($bachelorEndYear, $now);
+        $employment = $this->buildEmployment($bachelorEndYear, $now, $family);
         $languages = $this->buildLanguages($education);
 
         return new Timeline(
@@ -148,7 +157,7 @@ class TimelineBuilder
     /**
      * @return Collection<int, EmploymentEntry>
      */
-    private function buildEmployment(int $bachelorEndYear, CarbonImmutable $now): Collection
+    private function buildEmployment(int $bachelorEndYear, CarbonImmutable $now, string $family): Collection
     {
         $currentYear = (int) $now->format('Y');
         $firstJobYear = min($bachelorEndYear + 1, $currentYear);
@@ -160,14 +169,22 @@ class TimelineBuilder
         $spanCount = max(1, min(4, intdiv($totalMonths, 18)));
         $spanCount = $this->random->int(1, $spanCount);
 
+        // At most one short gap, placed after a randomly chosen earlier position
+        // (never before the current role). Needs at least two positions.
+        $gapAfterIndex = ($spanCount >= 2 && $this->random->bool(self::GAP_PROBABILITY))
+            ? $this->random->int(0, $spanCount - 2)
+            : -1;
+
+        $ladder = $this->familyLadder($family);
         $tiers = ['junior', 'mid', 'senior'];
+        $descriptions = $this->descriptionTemplates();
         $entries = collect();
 
         for ($i = 0; $i < $spanCount; $i++) {
             $isLast = $i === $spanCount - 1;
             $tier = $tiers[min($i, count($tiers) - 1)];
-            $role = $this->random->pick($this->locale->jobTitles()[$tier]);
-            $employer = $this->random->pick($this->locale->employers());
+            $role = $this->random->pick($ladder[$tier]);
+            $employer = $this->pickEmployer();
             $grade = 'Grade '.(3 + ($i * 2));
 
             if ($isLast) {
@@ -193,12 +210,17 @@ class TimelineBuilder
                 startDate: $start,
                 endDate: $end,
                 isCurrent: $isCurrent,
-                description: "Served as {$role['en']} at {$employer['name']}, delivering core duties for the {$employer['region']} region.",
-                descriptionSo: "Wuxuu u soo shaqeeyay {$employer['name']} isagoo hayey jagada {$role['so']}.",
+                description: $this->describe($descriptions['en'], $role['en'], $employer),
+                descriptionSo: $this->describe($descriptions['so'], $role['so'], $employer),
             ));
 
             if (! $isLast && $end !== null) {
-                $start = $end->addMonths($this->random->int(0, 6));
+                // Base hand-over of 0-6 months, plus a longer gap at the chosen boundary.
+                $months = $this->random->int(0, 6);
+                if ($i === $gapAfterIndex) {
+                    $months += $this->random->int(6, 14);
+                }
+                $start = $end->addMonths($months);
                 if ($start >= $now) {
                     $start = $now->subMonths(1);
                 }
@@ -206,6 +228,69 @@ class TimelineBuilder
         }
 
         return $entries->values();
+    }
+
+    /**
+     * Resolve a career family's tiered role ladder, falling back to the default
+     * family when the field's family has no ladder.
+     *
+     * @return array<string, array<int, array{en: string, so: string}>>
+     */
+    private function familyLadder(string $family): array
+    {
+        $ladders = $this->locale->jobTitles();
+
+        return $ladders[$family] ?? $ladders[self::DEFAULT_FAMILY];
+    }
+
+    /**
+     * Pick an employer, weighting selection toward the public sector.
+     *
+     * @return array{name: string, sector: string, region: string}
+     */
+    private function pickEmployer(): array
+    {
+        $bySector = [];
+        foreach ($this->locale->employers() as $employer) {
+            $bySector[$employer['sector'] ?? 'government'][] = $employer;
+        }
+
+        $weights = [];
+        foreach (self::SECTOR_WEIGHTS as $sector => $weight) {
+            if (! empty($bySector[$sector])) {
+                $weights[$sector] = $weight;
+            }
+        }
+
+        $sector = $weights === [] ? array_key_first($bySector) : $this->random->weightedKey($weights);
+
+        return $this->random->pick($bySector[$sector]);
+    }
+
+    /**
+     * @return array{en: array<int, string>, so: array<int, string>}
+     */
+    private function descriptionTemplates(): array
+    {
+        $templates = $this->locale->templates()['employment_description'] ?? [];
+
+        return [
+            'en' => $templates['en'] ?? ['Served as :role at :organisation in :region.'],
+            'so' => $templates['so'] ?? ['Jagada :role ee :organisation, gobolka :region.'],
+        ];
+    }
+
+    /**
+     * @param  array<int, string>  $templates
+     * @param  array{name: string, region: string}  $employer
+     */
+    private function describe(array $templates, string $role, array $employer): string
+    {
+        return strtr($this->random->pick($templates), [
+            ':role' => $role,
+            ':organisation' => $employer['name'],
+            ':region' => $employer['region'],
+        ]);
     }
 
     /**

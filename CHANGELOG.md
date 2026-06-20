@@ -10,11 +10,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Planned for **v0.1.0** — expanded Somali name pools and richer persona generation
-(field-aligned career families, sector variety, occasional career gaps, varied
-prose, larger supporting pools). This will intentionally change the persona
-produced for a given seed; reproducibility is guaranteed *within* a minor
-version, not across it.
+### v0.1.0 — expanded names & richer personas (pending tag)
+
+> **Breaking (seed reproducibility):** the persona produced for a given seed
+> differs from v0.0.x. This is intentional — generation logic and data pools
+> changed substantially. Reproducibility is guaranteed *within* v0.1.x, not
+> across the v0.0.x → v0.1.0 boundary.
+
+#### Added
+- **Field-aligned careers.** Each field of study now maps to a career *family*
+  (one of: public administration, finance, business, law, engineering, ICT,
+  health, education, agriculture, social/development). A persona's job ladder is
+  drawn from that family, so an Engineering graduate holds engineering roles —
+  not unrelated finance ones. `job_titles.php` is now keyed `family → tier → roles`.
+- **Sector variety.** Employers carry a `sector` (`government` / `ngo` /
+  `private`); selection is weighted public-sector-first (~60 / 30 / 15).
+- **Occasional career gaps.** ~30% of personas have one short gap (≈6–20 months)
+  between two positions. The one-current-position and no-overlap invariants still
+  hold.
+- **Varied prose.** Bilingual, gender-neutral employment-description templates
+  (replacing the single hardcoded sentence) plus more bio and cover-letter
+  variants, so a batch of personas reads less repetitively.
+- New tests covering field/role alignment, sector distribution, and career gaps.
+
+#### Changed
+- Name pools expanded: male **125 → 404**, female **83 → 265** (authentic Somali
+  given names; pools verified unique and disjoint).
+- Supporting pools grown: fields **16 → 41**, employers **20 → 54**,
+  universities **19 → 37**.
+- `LocaleRepository::fields()`, `employers()`, and `jobTitles()` now return the
+  enriched shapes (`family` on fields, `sector` on employers, family-keyed job
+  titles). Custom `LocaleRepository` implementations and published data must
+  follow suit.
+
+#### Fixed
+- Somali employment descriptions are no longer hardcoded with a male subject
+  pronoun (`Wuxuu …`); the new templates are gender-neutral.
 
 ## [0.0.3] - 2026-06-20
 

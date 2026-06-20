@@ -64,19 +64,19 @@ class ArrayLocaleRepository implements LocaleRepository
         return $this->load('degrees');
     }
 
-    /** @return array<int, array{en: string, so: string}> */
+    /** @return array<int, array{en: string, so: string, family: string}> */
     public function fields(): array
     {
         return $this->load('fields');
     }
 
-    /** @return array<int, array{name: string, region: string}> */
+    /** @return array<int, array{name: string, sector: string, region: string}> */
     public function employers(): array
     {
         return $this->load('employers');
     }
 
-    /** @return array<string, array<int, array{en: string, so: string}>> */
+    /** @return array<string, array<string, array<int, array{en: string, so: string}>>> */
     public function jobTitles(): array
     {
         return $this->load('job_titles');

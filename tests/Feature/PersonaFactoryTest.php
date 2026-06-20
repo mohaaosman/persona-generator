@@ -103,6 +103,69 @@ it('starts the first job no earlier than the bachelor graduation', function (): 
     }
 });
 
+it('aligns every job role with the field of study career family', function (): void {
+    $dir = __DIR__.'/../../resources/lang/so';
+    $familyByField = collect(require "{$dir}/fields.php")
+        ->mapWithKeys(fn (array $f) => [$f['en'] => $f['family']]);
+
+    // role label -> set of families that contain it
+    $familiesByRole = [];
+    foreach (require "{$dir}/job_titles.php" as $family => $tiers) {
+        foreach ($tiers as $roles) {
+            foreach ($roles as $role) {
+                $familiesByRole[$role['en']][$family] = true;
+            }
+        }
+    }
+
+    foreach (PersonaFactory::new()->seed(202)->makeMany(40) as $persona) {
+        $field = $persona->education()->first()->field;
+        $family = $familyByField[$field];
+
+        $persona->workExperience()->each(function (EmploymentEntry $entry) use ($family, $familiesByRole): void {
+            expect($familiesByRole)->toHaveKey($entry->role);
+            expect($familiesByRole[$entry->role])->toHaveKey($family);
+        });
+    }
+});
+
+it('draws employers from multiple sectors with the public sector dominant', function (): void {
+    $sectorByOrg = collect(require __DIR__.'/../../resources/lang/so/employers.php')
+        ->mapWithKeys(fn (array $e) => [$e['name'] => $e['sector']]);
+
+    $counts = ['government' => 0, 'ngo' => 0, 'private' => 0];
+    foreach (PersonaFactory::new()->seed(303)->makeMany(80) as $persona) {
+        $persona->workExperience()->each(function (EmploymentEntry $entry) use ($sectorByOrg, &$counts): void {
+            $counts[$sectorByOrg[$entry->organisation]]++;
+        });
+    }
+
+    expect(collect($counts)->filter()->count())->toBeGreaterThan(1);
+    expect($counts['government'])->toBeGreaterThan($counts['ngo'])
+        ->and($counts['government'])->toBeGreaterThan($counts['private']);
+});
+
+it('produces occasional career gaps while preserving timeline order', function (): void {
+    $sawGap = false;
+
+    foreach (PersonaFactory::new()->seed(404)->makeMany(80) as $persona) {
+        $positions = $persona->workExperience()->values();
+
+        for ($i = 0; $i < $positions->count() - 1; $i++) {
+            $end = $positions[$i]->endDate;
+            $next = $positions[$i + 1]->startDate;
+            expect($next >= $end)->toBeTrue();
+
+            $months = $end->diff($next)->y * 12 + $end->diff($next)->m;
+            if ($months >= 6) {
+                $sawGap = true;
+            }
+        }
+    }
+
+    expect($sawGap)->toBeTrue();
+});
+
 it('always lists Somali among spoken languages', function (): void {
     foreach (PersonaFactory::new()->seed(51)->makeMany(25) as $persona) {
         expect($persona->spokenLanguages())->toContain('Somali');

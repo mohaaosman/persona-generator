@@ -27,13 +27,13 @@ interface LocaleRepository
     /** @return array<int, array{level: string, en: string, so: string}> */
     public function degrees(): array;
 
-    /** @return array<int, array{en: string, so: string}> */
+    /** @return array<int, array{en: string, so: string, family: string}> */
     public function fields(): array;
 
-    /** @return array<int, array{name: string, region: string}> */
+    /** @return array<int, array{name: string, sector: string, region: string}> */
     public function employers(): array;
 
-    /** @return array<string, array<int, array{en: string, so: string}>> seniority => titles */
+    /** @return array<string, array<string, array<int, array{en: string, so: string}>>> family => seniority => titles */
     public function jobTitles(): array;
 
     /** @return array<int, string> */
