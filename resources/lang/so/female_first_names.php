@@ -14,7 +14,7 @@ return [
     'Amal', 'Anab', 'Asli', 'Ayaan', 'Barni', 'Basra', 'Bilan', 'Canab',
     'Dahabo', 'Ebla', 'Fadumo', 'Faiza', 'Fartun', 'Hawa', 'Hawo', 'Hindi',
     'Iftiin', 'Iman', 'Istar', 'Jawaahir', 'Kaltuun', 'Kawsar', 'Layla',
-    'Liibaan', 'Luul', 'Madiina', 'Marwo', 'Muna', 'Munira', 'Nadiifa', 'Nimco',
+    'Luul', 'Madiina', 'Marwo', 'Muna', 'Munira', 'Nadiifa', 'Nimco',
     'Nuura', 'Qali', 'Rahma', 'Roda', 'Sagal', 'Saho', 'Salaado', 'Shamis',
     'Shamso', 'Sofia', 'Suhayla', 'Ubah', 'Wardo', 'Xabiibo', 'Xamdi', 'Yurub',
     'Zeynab', 'Idil', 'Filsan', 'Halima', 'Asma', 'Naciima', 'Bisharo',
