@@ -4,7 +4,8 @@
  * Offline prose templates. Placeholders are interpolated by TemplateProseDriver
  * from persona facts. Available tokens:
  *   :first_name :full_name :role :organisation :years :degree :field
- *   :institution :languages :region :pronoun_subject :pronoun_possessive
+ *   :institution :languages :region :city :nationality :pronoun_subject
+ *   :pronoun_possessive
  *
  * The `employment_description` block is consumed by TimelineBuilder (not the
  * prose driver) to vary each position's description. Its templates are bilingual
@@ -23,6 +24,8 @@ return [
         ':first_name combines a :degree in :field from :institution with :years years of practical experience, currently as :role at :organisation.',
         'Now serving as :role at :organisation, :first_name has built :years years of experience in :field since graduating from :institution.',
         ':first_name is a results-oriented :field practitioner in :region, with :years years behind the role of :role at :organisation.',
+        ':full_name is a :nationality :field professional living in :city, with :years years of experience and a current post as :role at :organisation.',
+        'Born and raised in :region and now based in :city, :first_name holds a :degree in :field and works as :role at :organisation.',
     ],
 
     'bio_suffix' => [

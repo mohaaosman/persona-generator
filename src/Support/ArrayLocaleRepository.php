@@ -82,10 +82,16 @@ class ArrayLocaleRepository implements LocaleRepository
         return $this->load('job_titles');
     }
 
-    /** @return array<int, string> */
+    /** @return array<int|string, string|float> */
     public function languages(): array
     {
         return $this->load('languages');
+    }
+
+    /** @return array<string, mixed> */
+    public function profile(): array
+    {
+        return $this->load('profile', optional: true);
     }
 
     /** @return array<string, mixed> */
@@ -97,13 +103,17 @@ class ArrayLocaleRepository implements LocaleRepository
     /**
      * @return array<int|string, mixed>
      */
-    private function load(string $file): array
+    private function load(string $file, bool $optional = false): array
     {
         if (isset($this->cache[$file])) {
             return $this->cache[$file];
         }
 
         $path = "{$this->basePath}/{$this->locale}/{$file}.php";
+
+        if ($optional && ! is_file($path)) {
+            return $this->cache[$file] = [];
+        }
 
         if (! is_file($path)) {
             throw new InvalidArgumentException(

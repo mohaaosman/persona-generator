@@ -35,14 +35,22 @@ bio, cover letter). Use it to seed candidate-like data instead of stock
   with dob; education is chronological with exactly one `isHighest`; employment is
   ordered, non-overlapping, with exactly one current role (`endDate === null`,
   `isCurrent === true`); the first job starts no earlier than bachelor graduation;
-  Somali is always in `spokenLanguages()`. Read these off the persona — never
+  the locale's native language (Somali / Arabic) is always first in
+  `spokenLanguages()`. Read these off the persona — never
   recompute or "fix" them in the consumer.
 - **Prefer offline template prose.** `bio()` / `coverLetter()` default to the
   deterministic `TemplateProseDriver`. Only enable the AI driver via
   `config('persona-generator.ai.enabled')` (env `PERSONA_AI_PROSE=true`) when
   genuinely natural prose is required — AI prose is **non-deterministic even with a
   seed**, and any failure silently falls back to templates.
-- **Locale & data overrides.** The default locale is `so` (Somali). To customise
+- **Names are patronymic.** `middle_name` is the father's given name and
+  `last_name` the grandfather's (`fatherName()` / `grandfatherName()`). Never
+  treat `last_name` as a family surname, and never append one.
+- **Use the civil details.** `nationality`, `country`, `marital_status`, `phone`
+  and `email` are generated coherently with the home region — prefer them over
+  `fake()->phoneNumber()` / `fake()->email()`.
+- **Locale & data overrides.** The default locale is `so` (Somali); `ar` gives
+  pan-Arab personas (local-language keys become `role_ar`, `degree_ar`, …). To customise
   the source data, publish it (`vendor:publish --tag=persona-generator-data`) and
   point `PERSONA_DATA_PATH` at the copy; add a locale by mirroring
   `resources/lang/so/` and calling `->locale('{locale}')`.
@@ -70,6 +78,8 @@ foreach ($personas as $persona) {
         'last_name'   => $persona->last_name,
         'gender'      => $persona->genderCode(),   // 'M' / 'F'
         'dob'         => $persona->dob,             // DateTimeImmutable
+        'phone'       => $persona->phone,
+        'email'       => $persona->email,
         'region'      => $persona->region(),
         'city'        => $persona->city(),
         'headline'    => $persona->headline(),

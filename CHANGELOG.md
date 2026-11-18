@@ -10,6 +10,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Arab locale, cleaner names & fuller human profiles
+
+#### Added
+- **`ar` (pan-Arab) locale** — 447 male / 289 female Arabic given names in
+  common English transliteration, 12 Arab countries as home regions (Saudi
+  Arabia, UAE, Qatar, Kuwait, Oman, Bahrain, Jordan, Egypt, Sudan, Morocco,
+  Iraq, Yemen), with real universities, employers, Arabic degree/field/role
+  labels and Arabic employment descriptions. Same patronymic rule: own name +
+  father + grandfather, no family names.
+- **Fuller profiles** on every persona: `nationality`, `country`,
+  `marital_status` (age-weighted), `phone` (home-country mobile format; Somali
+  operator prefix follows the region) and `email` (derived from the persona's
+  own name). Also `fatherName()`, `grandfatherName()`, `fatherFullName()`, and
+  `father_name` / `grandfather_name` in `toArray()`.
+- **`profile.php`** locale file (+ `LocaleRepository::profile()`) for
+  nationality, phone patterns, e-mail domains, language odds and per-region
+  overrides.
+- Employers may declare the career `families` they hire and degrees the
+  `families` they suit; new degrees: Bachelor/Master of Laws, Master of Arts.
+
+#### Changed
+- **Somali name pools rebuilt**: 423 male / 286 female, all real given names in
+  Somali orthography. Removed titles (Sheekh, Xaaji, Macalin, Ugaas), places and
+  regions (Lasanod, Hiiraan), common nouns (Hooyo, Madaxweyne, Xildhibaan),
+  mis-gendered entries, English spellings mixed into Somali ones, and
+  "first + father" composites such as *Shukri Maxamed* that broke the
+  three-part name.
+- A son is never given his father's own name (grandfather's name is allowed).
+- Spoken languages are locale-driven: the first entry of `languages.php` (now
+  `[language => probability]`, plain lists still accepted) is the native
+  language; Somali is no longer hard-coded.
+- Careers are grounded: ~80% of degrees from home-country universities, most
+  jobs in the home region, employers matched to the career family, and (in
+  `ar`) government posts only in the persona's own country.
+- Local-language keys in `toArray()` follow the locale (`role_so`, `role_ar`,
+  …); entries carry a `lang` property.
+
 ### v0.1.0 — expanded names & richer personas (pending tag)
 
 > **Breaking (seed reproducibility):** the persona produced for a given seed

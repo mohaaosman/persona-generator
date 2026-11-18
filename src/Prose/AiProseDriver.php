@@ -25,7 +25,7 @@ class AiProseDriver implements ProseDriver
     public function bio(Persona $persona): string
     {
         return $this->generate(
-            instructions: 'You write concise, realistic professional bios (2-3 sentences) for Somali civil-service candidates. Return only the bio, no preamble.',
+            instructions: "You write concise, realistic professional bios (2-3 sentences) for {$this->audience($persona)} civil-service candidates. Return only the bio, no preamble.",
             prompt: $this->factsPrompt($persona)."\n\nWrite a 2-3 sentence first-person-neutral professional bio.",
         ) ?? $this->fallback->bio($persona);
     }
@@ -33,7 +33,7 @@ class AiProseDriver implements ProseDriver
     public function coverLetter(Persona $persona): string
     {
         return $this->generate(
-            instructions: 'You write professional cover letters for Somali civil-service job applicants. Return only the letter body, no preamble.',
+            instructions: "You write professional cover letters for {$this->audience($persona)} civil-service job applicants. Return only the letter body, no preamble.",
             prompt: $this->factsPrompt($persona)."\n\nWrite a formal 4-5 paragraph cover letter applying for a public-sector position.",
         ) ?? $this->fallback->coverLetter($persona);
     }
@@ -56,6 +56,11 @@ class AiProseDriver implements ProseDriver
         }
     }
 
+    private function audience(Persona $persona): string
+    {
+        return $persona->nationality !== '' ? $persona->nationality : 'Somali';
+    }
+
     private function factsPrompt(Persona $persona): string
     {
         $highest = $persona->highestEducation();
@@ -65,7 +70,8 @@ class AiProseDriver implements ProseDriver
             "Name: {$persona->full_name}",
             "Gender: {$persona->gender->value}",
             "Age: {$persona->age}",
-            "Home region: {$persona->region()}",
+            $persona->nationality !== '' ? "Nationality: {$persona->nationality}" : null,
+            "Home region: {$persona->region()}, city: {$persona->city()}",
             $highest ? "Highest education: {$highest->degree} in {$highest->field} from {$highest->institution} ({$highest->endYear})" : null,
             $current ? "Current role: {$current->role} at {$current->organisation}" : null,
             "Years of experience: {$persona->yearsOfExperience()}",

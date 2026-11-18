@@ -3,8 +3,12 @@
 namespace PersonaGenerator\ValueObjects;
 
 /**
- * One degree in a persona's education timeline. Both English and Somali labels
- * are provided so consumers can populate bilingual columns directly.
+ * One degree in a persona's education timeline. Both English and local-language
+ * labels are provided so consumers can populate bilingual columns directly.
+ *
+ * The `*So` properties hold the label in the locale's own language — Somali for
+ * `so`, Arabic for `ar` — and `$lang` names that language. toArray() keys the
+ * local labels by it (`degree_so`, `degree_ar`, ...).
  */
 readonly class EducationEntry
 {
@@ -18,6 +22,7 @@ readonly class EducationEntry
         public int $startYear,
         public int $endYear,
         public bool $isHighest,
+        public string $lang = 'so',
     ) {}
 
     /**
@@ -27,9 +32,9 @@ readonly class EducationEntry
     {
         return [
             'degree' => $this->degree,
-            'degree_so' => $this->degreeSo,
+            "degree_{$this->lang}" => $this->degreeSo,
             'field' => $this->field,
-            'field_so' => $this->fieldSo,
+            "field_{$this->lang}" => $this->fieldSo,
             'institution' => $this->institution,
             'country' => $this->country,
             'start_year' => $this->startYear,

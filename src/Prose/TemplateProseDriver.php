@@ -66,6 +66,8 @@ class TemplateProseDriver implements ProseDriver
             ':institution' => $highest?->institution ?? 'university',
             ':languages' => $this->formatList($persona->spokenLanguages()),
             ':region' => $persona->region(),
+            ':city' => $persona->city(),
+            ':nationality' => $persona->nationality,
             ':pronoun_subject' => $female ? 'She' : 'He',
             ':pronoun_possessive' => $female ? 'Her' : 'His',
         ];

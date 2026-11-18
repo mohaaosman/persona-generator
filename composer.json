@@ -3,7 +3,7 @@
     "description": "Locale-aware, coherent, seedable persona generator (names, timelines, prose) for candidate seeding.",
     "type": "library",
     "license": "MIT",
-    "keywords": ["faker", "persona", "seeding", "laravel", "somali"],
+    "keywords": ["faker", "persona", "seeding", "laravel", "somali", "arabic", "patronymic"],
     "require": {
         "php": "^8.3",
         "illuminate/support": "^11.0 || ^12.0 || ^13.0",
