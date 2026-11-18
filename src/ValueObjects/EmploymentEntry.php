@@ -7,6 +7,9 @@ use DateTimeImmutable;
 /**
  * One position in a persona's work timeline. A null endDate together with
  * isCurrent === true marks the present role.
+ *
+ * `roleSo` / `descriptionSo` hold the local-language text (Somali for `so`,
+ * Arabic for `ar`); `$lang` names that language and keys it in toArray().
  */
 readonly class EmploymentEntry
 {
@@ -21,6 +24,7 @@ readonly class EmploymentEntry
         public bool $isCurrent,
         public string $description,
         public string $descriptionSo,
+        public string $lang = 'so',
     ) {}
 
     /**
@@ -30,7 +34,7 @@ readonly class EmploymentEntry
     {
         return [
             'role' => $this->role,
-            'role_so' => $this->roleSo,
+            "role_{$this->lang}" => $this->roleSo,
             'organisation' => $this->organisation,
             'grade' => $this->grade,
             'region' => $this->region,
@@ -38,7 +42,7 @@ readonly class EmploymentEntry
             'end_date' => $this->endDate?->format('Y-m-d'),
             'is_current' => $this->isCurrent,
             'description' => $this->description,
-            'description_so' => $this->descriptionSo,
+            "description_{$this->lang}" => $this->descriptionSo,
         ];
     }
 }

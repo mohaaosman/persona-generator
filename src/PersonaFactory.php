@@ -5,7 +5,9 @@ namespace PersonaGenerator;
 use Closure;
 use PersonaGenerator\Contracts\LocaleRepository;
 use PersonaGenerator\Contracts\ProseDriver;
+use PersonaGenerator\Support\LocaleProfile;
 use PersonaGenerator\Support\NameEngine;
+use PersonaGenerator\Support\ProfileBuilder;
 use PersonaGenerator\Support\SeededRandom;
 use PersonaGenerator\Support\TimelineBuilder;
 use PersonaGenerator\ValueObjects\Gender;
@@ -71,8 +73,10 @@ class PersonaFactory
 
         $gender = $this->genderOverride ?? $random->pick([Gender::Male, Gender::Female]);
         $name = (new NameEngine($this->locale, $random))->compose($gender);
-        $timeline = (new TimelineBuilder($this->locale, $random))->build();
+        $profile = new LocaleProfile($this->locale);
+        $timeline = (new TimelineBuilder($this->locale, $random, $profile))->build();
         $fingerprint = $random->int(1, PHP_INT_MAX);
+        $details = (new ProfileBuilder($profile, $random))->build($name, $gender, $timeline->age, $timeline->region);
 
         return new Persona(
             first_name: $name['first'],
@@ -85,6 +89,11 @@ class PersonaFactory
             fingerprint: $fingerprint,
             timeline: $timeline,
             prose: ($this->proseFactory)($this->locale),
+            country: $details['country'],
+            nationality: $details['nationality'],
+            marital_status: $details['marital_status'],
+            phone: $details['phone'],
+            email: $details['email'],
         );
     }
 

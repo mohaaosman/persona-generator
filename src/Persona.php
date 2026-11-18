@@ -14,6 +14,10 @@ use PersonaGenerator\ValueObjects\Timeline;
 /**
  * A generated person. Structured fields are immutable; prose (bio, cover letter)
  * is produced lazily by the ProseDriver and memoised so it is computed once.
+ *
+ * Names are patronymic, not family names: `middle_name` is the father's given
+ * name and `last_name` the paternal grandfather's (see fatherName() /
+ * grandfatherName()).
  */
 class Persona
 {
@@ -32,7 +36,37 @@ class Persona
         public readonly int $fingerprint,
         private readonly Timeline $timeline,
         private readonly ProseDriver $prose,
+        public readonly string $country = '',
+        public readonly string $nationality = '',
+        public readonly string $marital_status = '',
+        public readonly string $phone = '',
+        public readonly string $email = '',
     ) {}
+
+    /**
+     * The father's given name (the persona's middle name).
+     */
+    public function fatherName(): string
+    {
+        return $this->middle_name;
+    }
+
+    /**
+     * The paternal grandfather's given name (the persona's last name).
+     */
+    public function grandfatherName(): string
+    {
+        return $this->last_name;
+    }
+
+    /**
+     * The father's own full name: "<father> <grandfather>". (His third name —
+     * the great-grandfather — is not modelled.)
+     */
+    public function fatherFullName(): string
+    {
+        return "{$this->middle_name} {$this->last_name}";
+    }
 
     /**
      * Education timeline, ordered oldest to newest.
@@ -131,12 +165,19 @@ class Persona
             'middle_name' => $this->middle_name,
             'last_name' => $this->last_name,
             'full_name' => $this->full_name,
+            'father_name' => $this->fatherName(),
+            'grandfather_name' => $this->grandfatherName(),
             'gender' => $this->gender->value,
             'gender_code' => $this->genderCode(),
             'age' => $this->age,
             'dob' => $this->dob->format('Y-m-d'),
+            'marital_status' => $this->marital_status,
+            'nationality' => $this->nationality,
+            'country' => $this->country,
             'region' => $this->region(),
             'city' => $this->city(),
+            'phone' => $this->phone,
+            'email' => $this->email,
             'languages' => $this->spokenLanguages(),
             'education' => $this->education()->map(fn (EducationEntry $e) => $e->toArray())->all(),
             'work_experience' => $this->workExperience()->map(fn (EmploymentEntry $e) => $e->toArray())->all(),

@@ -36,8 +36,22 @@ interface LocaleRepository
     /** @return array<string, array<string, array<int, array{en: string, so: string}>>> family => seniority => titles */
     public function jobTitles(): array;
 
-    /** @return array<int, string> */
+    /**
+     * Spoken languages, either a plain list or [language => probability]. The
+     * first entry is the native language and is always spoken.
+     *
+     * @return array<int|string, string|float>
+     */
     public function languages(): array;
+
+    /**
+     * Person-level locale details: country, nationality, phone patterns,
+     * e-mail domains, postgraduate language boosts and per-region overrides.
+     * An empty array is valid (sensible defaults apply).
+     *
+     * @return array<string, mixed>
+     */
+    public function profile(): array;
 
     /** @return array<string, mixed> */
     public function templates(): array;

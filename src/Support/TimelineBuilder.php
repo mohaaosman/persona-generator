@@ -31,10 +31,29 @@ class TimelineBuilder
     /** Probability a persona has one short gap between two positions. */
     private const GAP_PROBABILITY = 0.30;
 
+    /** Probability a degree is earned in the persona's home country. */
+    private const HOME_UNIVERSITY_PROBABILITY = 0.80;
+
+    /** Probability a position is with an employer in the persona's home region. */
+    private const HOME_EMPLOYER_PROBABILITY = 0.65;
+
+    private readonly LocaleProfile $profile;
+
+    /** Data key holding local-language labels ('so', 'ar', ...). */
+    private readonly string $lang;
+
+    private string $homeRegion = '';
+
+    private string $homeCountry = '';
+
     public function __construct(
         private readonly LocaleRepository $locale,
         private readonly SeededRandom $random,
-    ) {}
+        ?LocaleProfile $profile = null,
+    ) {
+        $this->profile = $profile ?? new LocaleProfile($locale);
+        $this->lang = $this->detectLocalKey();
+    }
 
     public function build(): Timeline
     {
@@ -47,6 +66,8 @@ class TimelineBuilder
         $birthYear = (int) $dob->format('Y');
 
         [$region, $city] = $this->pickHome();
+        $this->homeRegion = $region;
+        $this->homeCountry = $this->profile->country($region);
 
         $field = $this->random->pick($this->locale->fields());
         $family = $field['family'] ?? self::DEFAULT_FAMILY;
@@ -54,7 +75,7 @@ class TimelineBuilder
         $bachelorEndYear = $education->first()->endYear;
 
         $employment = $this->buildEmployment($bachelorEndYear, $now, $family);
-        $languages = $this->buildLanguages($education);
+        $languages = $this->buildLanguages($education, $region);
 
         return new Timeline(
             dob: $dob,
@@ -80,15 +101,19 @@ class TimelineBuilder
     }
 
     /**
-     * @param  array{en: string, so: string}  $field
+     * @param  array<string, string>  $field
      * @return Collection<int, EducationEntry>
      */
     private function buildEducation(int $birthYear, int $currentYear, array $field): Collection
     {
         $degrees = collect($this->locale->degrees());
-        $byLevel = fn (string $level) => $this->random->pick(
-            $degrees->where('level', $level)->values()->all()
-        );
+        $family = $field['family'] ?? self::DEFAULT_FAMILY;
+        $byLevel = function (string $level) use ($degrees, $family): array {
+            $atLevel = $degrees->where('level', $level);
+            $suited = $atLevel->filter(fn (array $d) => ! isset($d['families']) || in_array($family, $d['families'], true));
+
+            return $this->random->pick(($suited->isNotEmpty() ? $suited : $atLevel)->values()->all());
+        };
 
         $entries = collect();
 
@@ -129,28 +154,33 @@ class TimelineBuilder
             startYear: $e->startYear,
             endYear: $e->endYear,
             isHighest: $i === $entries->count() - 1,
+            lang: $e->lang,
         ))->values();
     }
 
     /**
-     * @param  array{level: string, en: string, so: string}  $degree
-     * @param  array{en: string, so: string}  $field
+     * @param  array<string, mixed>  $degree
+     * @param  array<string, string>  $field
      */
     private function makeEducation(array $degree, array $field, int $startYear, int $endYear): EducationEntry
     {
         $universities = $this->locale->universities();
-        $institution = $this->random->pick(array_keys($universities));
+        $home = array_keys(array_filter($universities, fn (string $country) => $country === $this->homeCountry));
+        $institution = ($home !== [] && $this->random->bool(self::HOME_UNIVERSITY_PROBABILITY))
+            ? $this->random->pick($home)
+            : $this->random->pick(array_keys($universities));
 
         return new EducationEntry(
             degree: $degree['en'],
-            degreeSo: $degree['so'],
+            degreeSo: $this->local($degree),
             field: $field['en'],
-            fieldSo: $field['so'],
+            fieldSo: $this->local($field),
             institution: $institution,
             country: $universities[$institution],
             startYear: $startYear,
             endYear: $endYear,
             isHighest: false,
+            lang: $this->lang,
         );
     }
 
@@ -184,7 +214,7 @@ class TimelineBuilder
             $isLast = $i === $spanCount - 1;
             $tier = $tiers[min($i, count($tiers) - 1)];
             $role = $this->random->pick($ladder[$tier]);
-            $employer = $this->pickEmployer();
+            $employer = $this->pickEmployer($family);
             $grade = 'Grade '.(3 + ($i * 2));
 
             if ($isLast) {
@@ -203,7 +233,7 @@ class TimelineBuilder
 
             $entries->push(new EmploymentEntry(
                 role: $role['en'],
-                roleSo: $role['so'],
+                roleSo: $this->local($role),
                 organisation: $employer['name'],
                 grade: $grade,
                 region: $employer['region'],
@@ -211,7 +241,13 @@ class TimelineBuilder
                 endDate: $end,
                 isCurrent: $isCurrent,
                 description: $this->describe($descriptions['en'], $role['en'], $employer),
-                descriptionSo: $this->describe($descriptions['so'], $role['so'], $employer),
+                descriptionSo: $this->describe(
+                    $descriptions['local'],
+                    $this->local($role),
+                    $employer,
+                    $this->profile->localRegionName($employer['region']),
+                ),
+                lang: $this->lang,
             ));
 
             if (! $isLast && $end !== null) {
@@ -244,14 +280,27 @@ class TimelineBuilder
     }
 
     /**
-     * Pick an employer, weighting selection toward the public sector.
+     * Pick an employer that hires the persona's career family, weighting
+     * selection toward the public sector and toward the home region.
      *
      * @return array{name: string, sector: string, region: string}
      */
-    private function pickEmployer(): array
+    private function pickEmployer(string $family): array
     {
+        $employers = $this->locale->employers();
+
+        // Where the locale says so, government posts are for nationals only.
+        if ($this->profile->governmentHomeOnly()) {
+            $eligible = array_filter($employers, fn (array $e) => ($e['sector'] ?? 'government') !== 'government'
+                || ($e['region'] ?? null) === $this->homeRegion);
+            $employers = $eligible !== [] ? $eligible : $employers;
+        }
+
+        // Employers declare the career families they hire; none declared = any.
+        $hiring = array_filter($employers, fn (array $e) => ! isset($e['families']) || in_array($family, $e['families'], true));
+
         $bySector = [];
-        foreach ($this->locale->employers() as $employer) {
+        foreach ($hiring !== [] ? $hiring : $employers as $employer) {
             $bySector[$employer['sector'] ?? 'government'][] = $employer;
         }
 
@@ -263,20 +312,28 @@ class TimelineBuilder
         }
 
         $sector = $weights === [] ? array_key_first($bySector) : $this->random->weightedKey($weights);
+        $pool = $bySector[$sector];
 
-        return $this->random->pick($bySector[$sector]);
+        // Most careers stay close to home.
+        $home = array_values(array_filter($pool, fn (array $e) => ($e['region'] ?? null) === $this->homeRegion));
+        if ($home !== [] && $this->random->bool($this->profile->homeEmployerProbability(self::HOME_EMPLOYER_PROBABILITY))) {
+            $pool = $home;
+        }
+
+        return $this->random->pick($pool);
     }
 
     /**
-     * @return array{en: array<int, string>, so: array<int, string>}
+     * @return array{en: array<int, string>, local: array<int, string>}
      */
     private function descriptionTemplates(): array
     {
         $templates = $this->locale->templates()['employment_description'] ?? [];
+        $en = $templates['en'] ?? ['Served as :role at :organisation in :region.'];
 
         return [
-            'en' => $templates['en'] ?? ['Served as :role at :organisation in :region.'],
-            'so' => $templates['so'] ?? ['Jagada :role ee :organisation, gobolka :region.'],
+            'en' => $en,
+            'local' => $templates[$this->lang] ?? $templates['so'] ?? $en,
         ];
     }
 
@@ -284,44 +341,68 @@ class TimelineBuilder
      * @param  array<int, string>  $templates
      * @param  array{name: string, region: string}  $employer
      */
-    private function describe(array $templates, string $role, array $employer): string
+    private function describe(array $templates, string $role, array $employer, ?string $regionName = null): string
     {
         return strtr($this->random->pick($templates), [
             ':role' => $role,
             ':organisation' => $employer['name'],
-            ':region' => $employer['region'],
+            ':region' => $regionName ?? $employer['region'],
         ]);
     }
 
     /**
+     * The local-language label of a data item, falling back to English.
+     *
+     * @param  array<string, mixed>  $item
+     */
+    private function local(array $item): string
+    {
+        return (string) ($item[$this->lang] ?? $item['en']);
+    }
+
+    /**
+     * Which key the locale's data uses for local-language labels: the locale
+     * code itself when present (e.g. 'ar'), else 'so' (the original layout).
+     */
+    private function detectLocalKey(): string
+    {
+        $sample = $this->locale->degrees()[0] ?? [];
+        $code = $this->locale->locale();
+
+        return match (true) {
+            isset($sample[$code]) => $code,
+            isset($sample['so']) => 'so',
+            default => 'en',
+        };
+    }
+
+    /**
+     * Native language always; every other language by its odds (region
+     * overrides applied), with postgraduates likelier to speak the boosted ones.
+     *
      * @param  Collection<int, EducationEntry>  $education
      * @return array<int, string>
      */
-    private function buildLanguages(Collection $education): array
+    private function buildLanguages(Collection $education, string $region): array
     {
-        $available = $this->locale->languages();
-        $languages = ['Somali'];
-
-        if (in_array('Arabic', $available, true) && $this->random->bool(0.7)) {
-            $languages[] = 'Arabic';
-        }
+        $odds = $this->profile->languages($region);
 
         $hasPostgrad = $education->contains(fn (EducationEntry $e) => str_contains(strtolower($e->degree), 'master')
             || str_contains(strtolower($e->degree), 'doctor'));
-        $englishProb = $hasPostgrad ? 0.9 : 0.6;
-        if (in_array('English', $available, true) && $this->random->bool($englishProb)) {
-            $languages[] = 'English';
+        if ($hasPostgrad) {
+            foreach ($this->profile->postgraduateLanguages() as $language => $p) {
+                $odds[$language] = max($odds[$language] ?? 0.0, $p);
+            }
         }
 
-        if (in_array('Italian', $available, true) && $this->random->bool(0.1)) {
-            $languages[] = 'Italian';
+        $languages = [];
+        foreach ($odds as $language => $p) {
+            if ($languages === [] || $this->random->bool($p)) {
+                $languages[] = $language;
+            }
         }
 
-        if (in_array('Swahili', $available, true) && $this->random->bool(0.15)) {
-            $languages[] = 'Swahili';
-        }
-
-        return array_values(array_unique($languages));
+        return $languages;
     }
 
     private function ageFromYear(int $birthYear, int $currentYear): int
